@@ -66,6 +66,10 @@ export const config = {
   },
 };
 
-export default new ApolloServer({ schema }).createHandler({
+export default new ApolloServer({
+  schema,
+  introspection: true,
+  playground: true,
+}).createHandler({
   path: "/api/graphql",
 });
