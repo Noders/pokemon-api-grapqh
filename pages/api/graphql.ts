@@ -1,3 +1,5 @@
+import { NowRequest, NowResponse } from "@vercel/node";
+import Cors from "cors";
 import { ApolloServer, gql, makeExecutableSchema } from "apollo-server-micro";
 import {
   getPokemonById,
@@ -66,10 +68,36 @@ export const config = {
   },
 };
 
-export default new ApolloServer({
-  schema,
-  introspection: true,
-  playground: true,
-}).createHandler({
-  path: "/api/graphql",
-});
+// Helper method to wait for a middleware to execute before continuing
+// And to throw an error when an error happens in a middleware
+function initMiddleware(middleware: any) {
+  return (req, res) =>
+    new Promise((resolve, reject) => {
+      middleware(req, res, (result) => {
+        if (result instanceof Error) {
+          return reject(result);
+        }
+        return resolve(result);
+      });
+    });
+}
+
+const cors = initMiddleware(
+  // You can read more about the available options here: https://github.com/expressjs/cors#configuration-options
+  Cors({
+    // Only allow requests with GET, POST and OPTIONS
+    methods: ["GET", "POST", "OPTIONS"],
+  })
+);
+
+export default async function handler(req: NowRequest, res: NowResponse) {
+  await cors(req, res);
+  const apolloServer = new ApolloServer({
+    schema,
+    introspection: true,
+    playground: true,
+  }).createHandler({
+    path: "/api/graphql",
+  });
+  return apolloServer(req, res);
+}
